@@ -3,6 +3,9 @@ use crate::skerror;
 use crate::Instant;
 use crate::SKResult;
 
+// 'I' and 'O' are not part of the allowed chars to avoid any confusion with 0 or 1
+const ALPHA5_MATCHING: &str = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+
 ///
 /// Stucture representing a Two-Line Element Set (TLE), a satellite
 /// ephemeris format from the 1970s that is still somehow in use
@@ -311,7 +314,7 @@ impl TLE {
         Ok(Self {
             name: "none".to_string(),
             sat_num: {
-                match TLE::alpha5_to_int(&line1[2..7]) {
+                match Self::alpha5_to_int(&line1[2..7]) {
                     Ok(y) => y,
                     Err(e) => return skerror!("Could not parse sat number: {}", e.to_string()),
                 }
@@ -429,15 +432,15 @@ impl TLE {
         match alpha5.chars().nth(0) {
             // Alpha char is only possible at the first position, so if the first char is a
             // digit or a whitespace the standard `.parse()` can be used.
-            Some(c) if c.is_digit(10) || c.is_whitespace() => match alpha5.trim().parse() {
+            Some(c) if c.is_ascii_digit() || c.is_whitespace() => match alpha5.trim().parse() {
                 Ok(i) => Ok(i),
                 Err(e) => skerror!("Invalid sat num: {}", e.to_string()),
             },
             Some(c) if c.is_alphabetic() => {
-                // 'I' and 'O' are not part of the allowed chars to avoid any cconfusion with 0 or 1
-                let matching = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-
-                match matching.chars().position(|m| m == c.to_ascii_uppercase()) {
+                match ALPHA5_MATCHING
+                    .chars()
+                    .position(|m| m == c.to_ascii_uppercase())
+                {
                     Some(p) => match alpha5[1..].parse::<i32>() {
                         Ok(i) => Ok((p as i32 + 10) * 10000 + i),
                         Err(e) => skerror!("Invalid sat num: {}", e.to_string()),
@@ -446,7 +449,7 @@ impl TLE {
                 }
             }
             Some(c) => skerror!("Invalid first digit in sat num: {}", c),
-            None => return skerror!("Parse error"),
+            None => skerror!("Parse error"),
         }
     }
 
@@ -454,9 +457,10 @@ impl TLE {
         match sat_num {
             i @ 0..=99999 => Ok(format!("{:0>5}", i)),
             i @ 100000..=339999 => {
-                // 'I' and 'O' are not part of the allowed chars to avoid any cconfusion with 0 or 1
-                let matching = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-                let c = matching.chars().nth(i as usize / 10000 - 10).unwrap();
+                let c = ALPHA5_MATCHING
+                    .chars()
+                    .nth(i as usize / 10000 - 10)
+                    .unwrap();
                 Ok(format!("{c}{:0>4}", i % 10000))
             }
             _i @ 340000.. => skerror!("Sat num >= 340000 cannot be represented in alpha5 format"),
@@ -483,7 +487,7 @@ impl TLE {
                             Rev #: {}
         "#,
             self.name,
-            TLE::int_to_alpha5(self.sat_num).unwrap(),
+            Self::int_to_alpha5(self.sat_num).unwrap(),
             match self.desig_year > 50 {
                 true => self.desig_year + 1900,
                 false => self.desig_year + 2000,
