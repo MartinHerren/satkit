@@ -5,6 +5,7 @@ use crate::SKResult;
 
 // 'I' and 'O' are not part of the allowed chars to avoid any confusion with 0 or 1
 const ALPHA5_MATCHING: &str = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+const NO_NAME: &str = "<No Name>";
 
 ///
 /// Stucture representing a Two-Line Element Set (TLE), a satellite
@@ -65,7 +66,7 @@ const ALPHA5_MATCHING: &str = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct TLE {
     /// Name of satellite
-    pub name: String,
+    pub name: Option<String>,
     /// String describing launch
     pub intl_desig: String,
     /// Satellite NORAD number
@@ -181,7 +182,7 @@ impl TLE {
     ///
     pub fn new() -> Self {
         Self {
-            name: "none".to_string(),
+            name: None,
             intl_desig: "".to_string(),
             sat_num: 0,
             desig_year: 0,
@@ -243,9 +244,9 @@ impl TLE {
             Ok(mut tle) => {
                 tle.name = {
                     if line0.len() > 2 && line0.chars().nth(0).unwrap() == '0' {
-                        line0[2..].to_string()
+                        Some(line0[2..].to_string())
                     } else {
-                        String::from(line0)
+                        Some(String::from(line0))
                     }
                 };
                 Ok(tle)
@@ -312,7 +313,7 @@ impl TLE {
         let epoch = Instant::from_date(year as i32, 1, 2).add_utc_days(day_of_year - 2.0);
 
         Ok(Self {
-            name: "none".to_string(),
+            name: None,
             sat_num: {
                 match Self::alpha5_to_int(&line1[2..7]) {
                     Ok(y) => y,
@@ -551,7 +552,10 @@ impl TLE {
                       Mean Motion: {} revs / day
                             Rev #: {}
         "#,
-            self.name,
+            match self.name {
+                Some(ref s) => s,
+                None => NO_NAME,
+            },
             Self::int_to_alpha5(self.sat_num).unwrap(),
             match self.desig_year > 50 {
                 true => self.desig_year + 1900,
@@ -653,39 +657,68 @@ mod tests {
             return skerror!("load_lines: Err = \"Incorrect number of elements parsed\"");
         }
 
-        if tles[0].name != "2023-193D" {
-            return skerror!(
-                "load_lines: Err = \"Error parsing sat name {}\"",
-                tles[0].name
-            );
+        match tles[0].name {
+            Some(ref s) if s == "2023-193D" => (),
+            Some(ref s) => {
+                return skerror!(
+                    "load_lines: Err = \"Error parsing sat name '2023-193D', got: {}\"",
+                    s
+                );
+            }
+            _ => {
+                return skerror!("load_lines: Err = \"Error parsing sat name '2023-193D'\"");
+            }
         }
 
-        if tles[1].name != "CPOD FLT2 (TYVAK-0033)" {
-            return skerror!(
-                "load_lines: Err = \"Error parsing sat name {}\"",
-                tles[1].name
-            );
+        match tles[1].name {
+            Some(ref s) if s == "CPOD FLT2 (TYVAK-0033)" => (),
+            Some(ref s) => {
+                return skerror!(
+                 "load_lines: Err = \"Error parsing sat name 'CPOD FLT2 (TYVAK-0033)', got: {}\"",
+                s);
+            }
+            _ => {
+                return skerror!(
+                    "load_lines: Err = \"Error parsing sat name 'CPOD FLT2 (TYVAK-0033)'\""
+                );
+            }
         }
 
-        if tles[2].name != "1998-067WV" {
-            return skerror!(
-                "load_lines: Err = \"Error parsing sat name {}\"",
-                tles[2].name
-            );
+        match tles[2].name {
+            Some(ref s) if s == "1998-067WV" => (),
+            Some(ref s) => {
+                return skerror!(
+                    "load_lines: Err = \"Error parsing sat name '1998-067WV', got {}\"",
+                    s
+                )
+            }
+            _ => return skerror!("load_lines: Err = \"Error parsing sat name '1998-067WV'\""),
         }
 
-        if tles[3].name != "2 PATHFINDER" {
-            return skerror!(
-                "load_lines: Err = \"Error parsing sat name {}\"",
-                tles[3].name
-            );
+        match tles[3].name {
+            Some(ref s) if s == "2 PATHFINDER" => (),
+            Some(ref s) => {
+                return skerror!(
+                    "load_lines: Err = \"Error parsing sat name '2 PATHFINDER', got {}\"",
+                    s
+                );
+            }
+            _ => {
+                return skerror!("load_lines: Err = \"Error parsing sat name '2 PATHFINDER'\"");
+            }
         }
 
-        if tles[4].name != "SHINSEI (MS-F2)" {
-            return skerror!(
-                "load_lines: Err = \"Error parsing sat name {}\"",
-                tles[4].name
-            );
+        match tles[4].name {
+            Some(ref s) if s == "SHINSEI (MS-F2)" => (),
+            Some(ref s) => {
+                return skerror!(
+                    "load_lines: Err = \"Error parsing sat name 'SHINSEI (MS-F2)', got {}\"",
+                    s
+                );
+            }
+            _ => {
+                return skerror!("load_lines: Err = \"Error parsing sat name 'SHINSEI (MS-F2)'\"");
+            }
         }
 
         if tles[4].sat_num != 5485 {
@@ -695,11 +728,17 @@ mod tests {
             );
         }
 
-        if tles[5].name != "OSCAR 7 (AO-7)" {
-            return skerror!(
-                "load_lines: Err = \"Error parsing sat name {}\"",
-                tles[5].name
-            );
+        match tles[5].name {
+            Some(ref s) if s == "OSCAR 7 (AO-7)" => (),
+            Some(ref s) => {
+                return skerror!(
+                    "load_lines: Err = \"Error parsing sat name 'OSCAR 7 (AO-7)', got {}\"",
+                    s
+                );
+            }
+            _ => {
+                return skerror!("load_lines: Err = \"Error parsing sat name 'OSCAR 7 (AO-7)'\"");
+            }
         }
 
         if tles[5].sat_num != 7530 {
@@ -709,11 +748,14 @@ mod tests {
             );
         }
 
-        if tles[6].name != "none" {
-            return skerror!(
-                "load_lines: Err = \"Error parsing sat name {}\"",
-                tles[6].name
-            );
+        match tles[6].name {
+            None => (),
+            Some(ref s) => {
+                return skerror!(
+                    "load_lines: Err = \"Error parsing sat name, expected None, got {}\"",
+                    s
+                );
+            }
         }
 
         Ok(())
